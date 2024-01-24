@@ -4,8 +4,6 @@ import { Loader } from "lucide-react"
 import { useAccountManager } from "../app/context/AccountManager"
 import { shortenAddress } from "../lib/utils"
 import { Button } from "./ui/button"
-import { Combobox } from "./ui/combobox"
-import Identicon from "polkadot-identicon"
 import { useCallback } from "react"
 import { InjectedAccountWithMeta } from "@polkadot/extension-inject/types"
 import { AccountCombobox } from "./AccountCombobox"
@@ -24,8 +22,9 @@ export const Account = () => {
 
   if (inSignet === undefined)
     return (
-      <div>
+      <div className="flex items-center gap-3">
         <Loader />
+        <p>Loading...</p>
       </div>
     )
 

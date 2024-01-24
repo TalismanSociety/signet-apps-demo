@@ -7,7 +7,6 @@ import { Button } from "../ui/button"
 import { Address } from "../../lib/address"
 import { useApi } from "../../app/context/ApiManager"
 import { useAccountManager } from "../../app/context/AccountManager"
-import { web3FromAddress } from "@polkadot/extension-dapp"
 
 export const Transfer: React.FC<{ api: ApiPromise }> = () => {
   const { signetVault, selectedAccount } = useAccountManager()
@@ -53,6 +52,7 @@ export const Transfer: React.FC<{ api: ApiPromise }> = () => {
         if (res) setRes(res)
       } else if (selectedAccount) {
         setLoading(true)
+        const { web3FromAddress } = await import("@polkadot/extension-dapp")
         const { signer } = await web3FromAddress(selectedAccount.address)
         const res = await extrinsic.signAndSend(selectedAccount.address, { signer })
         console.log(res)

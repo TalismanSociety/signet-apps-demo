@@ -1,8 +1,9 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { InjectedAccountWithMeta } from "@polkadot/extension-inject/types"
 import { Combobox } from "./ui/combobox"
-import Identicon from "polkadot-identicon"
+const Identicon = dynamic(() => import("polkadot-identicon"), { ssr: false })
 
 type Props = {
   accounts: InjectedAccountWithMeta[]

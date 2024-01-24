@@ -2,7 +2,6 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 import { SignetSdk, VaultAccount, useSignetSdk } from "@talismn/signet-apps-sdk"
-import { web3AccountsSubscribe, web3Enable } from "@polkadot/extension-dapp"
 import { InjectedAccountWithMeta } from "@polkadot/extension-inject/types"
 
 type SignetProps = {
@@ -37,13 +36,17 @@ export const AccountManager: React.FC<React.PropsWithChildren> = ({ children }) 
   const unsubCall = useRef<Function>()
 
   const handleAutoConnectSignet = useCallback(async () => {
+    if (typeof window === "undefined") return
+    console.log(window)
     const account = await sdk?.getAccount()
     if (account) setSignetVault(account)
   }, [sdk])
 
   const connectWallet = useCallback(async () => {
     try {
+      if (typeof window === "undefined") return
       setConnecting(true)
+      const { web3Enable } = await import("@polkadot/extension-dapp")
       const enabled = await web3Enable("Signet Apps Demo")
       if (enabled.length > 0) {
         setEnabled(true)
@@ -55,19 +58,23 @@ export const AccountManager: React.FC<React.PropsWithChildren> = ({ children }) 
     }
   }, [])
 
-  useEffect(() => {
+  const subscribeAccounts = useCallback(async () => {
     if (!enabled) return
+    const { web3AccountsSubscribe } = await import("@polkadot/extension-dapp")
     web3AccountsSubscribe((accounts) => {
       setInjected(accounts)
       if (accounts.length === 0) setEnabled(false)
     }).then((unsub) => {
       unsubCall.current = unsub
     })
+  }, [enabled])
 
+  useEffect(() => {
+    subscribeAccounts()
     return () => {
       unsubCall.current && unsubCall.current()
     }
-  }, [enabled])
+  }, [enabled, subscribeAccounts])
 
   useEffect(() => {
     if (inSignet) handleAutoConnectSignet()
