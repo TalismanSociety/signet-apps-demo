@@ -7,10 +7,11 @@ import { Button } from "../ui/button"
 import { Address } from "../../lib/address"
 import { useApi } from "../../app/context/ApiManager"
 import { useAccountManager } from "../../app/context/AccountManager"
+import { web3FromAddress } from "@polkadot/extension-dapp"
 
 export const Transfer: React.FC<{ api: ApiPromise }> = () => {
-  const { signetVault } = useAccountManager()
-  const { isChainSupported, api } = useApi((signetVault?.chain.id as any) ?? "polkadot")
+  const { signetVault, selectedAccount } = useAccountManager()
+  const { isChainSupported, api } = useApi(signetVault?.chain.id as any)
   const { sdk } = useSignetSdk()
   const [recipientAddress, setRecipientAddress] = useState("")
   const [amountString, setAmountString] = useState("")
@@ -38,21 +39,31 @@ export const Transfer: React.FC<{ api: ApiPromise }> = () => {
 
   const extrinsic = useMemo(() => {
     if (!address || !api) return null
-    const transferExtrinsic = buildTransferExtrinsic()
-    return transferExtrinsic
+    return buildTransferExtrinsic()
   }, [address, api, buildTransferExtrinsic])
 
   const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault()
     setRes(undefined)
-    if (sdk === undefined || !extrinsic || (sdk && !signetVault)) return
-    if (signetVault) {
-      setLoading(true)
-      const res = await sdk.send(extrinsic.method.toHex())
-      if (res) setRes(res)
+    if (!extrinsic) return
+    try {
+      if (signetVault) {
+        setLoading(true)
+        const res = await sdk.send(extrinsic.method.toHex())
+        if (res) setRes(res)
+      } else if (selectedAccount) {
+        setLoading(true)
+        const { signer } = await web3FromAddress(selectedAccount.address)
+        const res = await extrinsic.signAndSend(selectedAccount.address, { signer })
+        console.log(res)
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
       setLoading(false)
     }
   }
+
   return (
     <AccordionItem value="transfer">
       <AccordionTrigger>
@@ -72,7 +83,9 @@ export const Transfer: React.FC<{ api: ApiPromise }> = () => {
           />
           <Button
             type="submit"
-            disabled={!address || !isChainSupported || !extrinsic || sdk === undefined}
+            disabled={
+              !address || !isChainSupported || !extrinsic || (!signetVault && !selectedAccount)
+            }
             onClick={handleTransfer}
           >
             {isChainSupported

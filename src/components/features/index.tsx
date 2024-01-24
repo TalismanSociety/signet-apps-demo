@@ -5,7 +5,6 @@ import { useAccountManager } from "../../app/context/AccountManager"
 import { useApi } from "../../app/context/ApiManager"
 import { Accordion } from "../ui/accordion"
 import { Transfer } from "./Transfer"
-import { ManageProxies } from "./ManageProxies"
 
 const Wrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
   return (
@@ -17,14 +16,15 @@ const Wrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
 }
 export const Features: React.FC = () => {
   const { signetVault } = useAccountManager()
-  const { isChainSupported, api } = useApi((signetVault?.chain.id as any) ?? "polkadot")
+  const { isChainSupported, api } = useApi(signetVault?.chain.id as any)
   if (!isChainSupported) return <Wrapper>The chain is not supported!</Wrapper>
 
   if (!api || !api.isReady)
     return (
       <Wrapper>
-        <div className="w-full items-center">
+        <div className="w-full flex gap-3 items-center">
           <Loader />
+          <p>Loading...</p>
         </div>
       </Wrapper>
     )
@@ -32,7 +32,6 @@ export const Features: React.FC = () => {
     <Wrapper>
       <Accordion type="single" collapsible>
         <Transfer api={api} />
-        <ManageProxies api={api} />
       </Accordion>
     </Wrapper>
   )

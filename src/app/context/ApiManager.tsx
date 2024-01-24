@@ -3,7 +3,7 @@
 import { ApiPromise, WsProvider } from "@polkadot/api"
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 
-const supportedChains = {
+export const supportedChains = {
   "rococo-testnet": {
     name: "Rococo",
     url: "wss://rococo-rpc.polkadot.io",
@@ -27,41 +27,61 @@ type SupportedChainIds = keyof typeof supportedChains
 type ApiManagerProps = {
   apiStore: Partial<Record<SupportedChainIds, ApiPromise>>
   createApi: (chain: SupportedChainIds) => void
+  chain: (typeof supportedChains)[SupportedChainIds] & { id: SupportedChainIds }
+  setChainId: (chainId: SupportedChainIds) => void
 }
 
-const ApiManagerContext = createContext<ApiManagerProps>({ apiStore: {}, createApi: () => {} })
+const ApiManagerContext = createContext<ApiManagerProps>({
+  apiStore: {},
+  createApi: () => {},
+  chain: { ...supportedChains.polkadot, id: "polkadot" },
+  setChainId: () => {},
+})
 
 export const ApiManager: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [apiStore, setApiStore] = useState<Partial<Record<SupportedChainIds, ApiPromise>>>({})
+  const [chainId, setChainId] = useState<SupportedChainIds>("polkadot")
+
+  const chain = useMemo(() => ({ ...supportedChains[chainId], id: chainId }), [chainId])
 
   const createApi = useCallback(async (chain: SupportedChainIds) => {
     const { url } = supportedChains[chain]
     const provider = new WsProvider([url])
     const api = await ApiPromise.create({ provider })
     await api.isReady
+    console.log("Create ", chain)
     setApiStore((prev) => ({ ...prev, [chain]: api }))
   }, [])
 
   return (
-    <ApiManagerContext.Provider value={{ apiStore, createApi }}>
+    <ApiManagerContext.Provider value={{ apiStore, createApi, chain, setChainId }}>
       {children}
     </ApiManagerContext.Provider>
   )
 }
 
-export const useApi = (chain: SupportedChainIds) => {
-  const { apiStore, createApi } = useContext(ApiManagerContext)
-  const isChainSupported = useMemo(() => supportedChains[chain] !== undefined, [chain])
+export const useApi = (_chain?: SupportedChainIds) => {
+  const { apiStore, createApi, chain } = useContext(ApiManagerContext)
 
-  const api = useMemo(() => apiStore[chain], [apiStore, chain])
+  const isChainSupported = useMemo(
+    () => (_chain ? supportedChains[_chain] !== undefined : true),
+    [_chain]
+  )
+
+  const api = useMemo(() => apiStore[_chain ?? chain.id], [_chain, apiStore, chain.id])
 
   useEffect(() => {
     if (!isChainSupported || api !== undefined) return
-    createApi(chain)
-  }, [api, chain, createApi, isChainSupported])
+    createApi(_chain ?? chain.id)
+  }, [_chain, api, chain, createApi, isChainSupported])
 
   return {
     api,
     isChainSupported,
   }
+}
+
+export const useNetwork = () => {
+  const { chain, setChainId } = useContext(ApiManagerContext)
+  return { chain, setChainId }
 }
