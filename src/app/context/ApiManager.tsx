@@ -49,7 +49,6 @@ export const ApiManager: React.FC<React.PropsWithChildren> = ({ children }) => {
     const provider = new WsProvider([url])
     const api = await ApiPromise.create({ provider })
     await api.isReady
-    console.log("Create ", chain)
     setApiStore((prev) => ({ ...prev, [chain]: api }))
   }, [])
 

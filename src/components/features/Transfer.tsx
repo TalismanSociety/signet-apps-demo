@@ -55,7 +55,7 @@ export const Transfer: React.FC<{ api: ApiPromise }> = () => {
         const { web3FromAddress } = await import("@polkadot/extension-dapp")
         const { signer } = await web3FromAddress(selectedAccount.address)
         const res = await extrinsic.signAndSend(selectedAccount.address, { signer })
-        console.log(res)
+        console.log("Transfer done!", res)
       }
     } catch (e) {
       console.error(e)

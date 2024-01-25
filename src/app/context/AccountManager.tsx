@@ -37,7 +37,6 @@ export const AccountManager: React.FC<React.PropsWithChildren> = ({ children }) 
 
   const handleAutoConnectSignet = useCallback(async () => {
     if (typeof window === "undefined") return
-    console.log(window)
     const account = await sdk?.getAccount()
     if (account) setSignetVault(account)
   }, [sdk])
