@@ -12,7 +12,7 @@ export default function Home() {
           <Features />
         </div>
       </section>
-      <footer className="flex mt-auto w-full p-4 gap-3 justify-center items-center">
+      <footer className="flex w-full p-4 gap-3 justify-center items-center">
         <a className="text-gray-700 hover:text-lime-400" href="https://talisman.xyz/signet">
           Signet
         </a>

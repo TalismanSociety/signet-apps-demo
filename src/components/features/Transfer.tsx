@@ -1,12 +1,19 @@
 import { useCallback, useMemo, useState } from "react"
 import { ApiPromise } from "@polkadot/api"
 import { SendTxRespond, useSignetSdk } from "@talismn/signet-apps-sdk"
-import { AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion"
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
 import { Address } from "../../lib/address"
 import { useApi } from "../../app/context/ApiManager"
 import { useAccountManager } from "../../app/context/AccountManager"
+
+const parseAmount = (amount: string, decimals: number): bigint => {
+  const [int, frac] = amount.split(".")
+  const intPart = BigInt(int) * BigInt(10 ** decimals)
+  if (frac === undefined) return intPart
+  const fracPart = BigInt(frac.slice(0, decimals).padEnd(decimals, "0"))
+  return intPart + fracPart
+}
 
 export const Transfer: React.FC<{ api: ApiPromise }> = () => {
   const { signetVault, selectedAccount } = useAccountManager()
@@ -27,14 +34,25 @@ export const Transfer: React.FC<{ api: ApiPromise }> = () => {
     }
   }, [recipientAddress])
 
+  const amountBN = useMemo(() => {
+    try {
+      if (!api) return null
+      const chainProperties = api.registry.getChainProperties()
+      if (!chainProperties) return null
+      return parseAmount(amountString, chainProperties.tokenDecimals.value[0].toNumber())
+    } catch (e) {
+      return null
+    }
+  }, [amountString, api])
+
   const buildTransferExtrinsic = useCallback(() => {
-    if (!api || !address) return null
+    if (!api || !address || amountBN === null) return null
     if (api.tx.balances?.transferKeepAlive) {
-      return api.tx.balances.transferKeepAlive(address.toSs58(), amountString)
+      return api.tx.balances.transferKeepAlive(address.toSs58(), amountBN)
     } else if (api.tx.assets?.transfer) {
       return api.tx.assets.transfer(address.toSs58(), amountString)
     }
-  }, [address, amountString, api])
+  }, [address, amountBN, amountString, api])
 
   const extrinsic = useMemo(() => {
     if (!address || !api) return null
@@ -64,44 +82,55 @@ export const Transfer: React.FC<{ api: ApiPromise }> = () => {
     }
   }
 
+  const tokenSymbol = useMemo(() => {
+    return api?.registry.getChainProperties()?.tokenSymbol.value[0].toString()
+  }, [api?.registry])
+
   return (
-    <AccordionItem value="transfer">
-      <AccordionTrigger>
-        <h4>Transfer</h4>
-      </AccordionTrigger>
-      <AccordionContent>
-        <form className="w-full grid gap-3 p-3" onSubmit={handleTransfer}>
-          <Input
-            label="Recipient"
-            placeholder="5HKCpZoi9Nqnq3..."
-            onChange={(e) => setRecipientAddress(e.target.value)}
-          />
+    <div className="flex flex-col w-full">
+      <h4 className="font-bold text-lg">Transfer</h4>
+      <form className="w-full grid gap-3 p-3" onSubmit={handleTransfer}>
+        <Input
+          label="Recipient"
+          placeholder="5HKCpZoi9Nqnq3..."
+          onChange={(e) => setRecipientAddress(e.target.value)}
+        />
+        <div className="">
           <Input
             label="Amount"
             placeholder="Amount"
             onChange={(e) => setAmountString(e.target.value)}
+            suffix={tokenSymbol}
           />
-          <Button
-            type="submit"
-            disabled={
-              !address || !isChainSupported || !extrinsic || (!signetVault && !selectedAccount)
-            }
-            onClick={handleTransfer}
-          >
-            {isChainSupported
-              ? loading
-                ? "Transferring..."
-                : "Transfer Token"
-              : "Chain not supported!"}
-          </Button>
-          {res?.error !== undefined && <p className="text-red-500 mt-2">{res.error}</p>}
-          {res?.receipt !== undefined && (
-            <p className="text-green-500 mt-2">
-              Tx submitted at {res.receipt.blockNumber}-{res.receipt.txIndex}
-            </p>
+          {amountString.length > 0 && amountBN === null && (
+            <p className="text-red-500 mt-1 text-sm">Invalid amount.</p>
           )}
-        </form>
-      </AccordionContent>
-    </AccordionItem>
+        </div>
+        <Button
+          type="submit"
+          disabled={
+            amountBN === null ||
+            amountBN <= BigInt(0) ||
+            !address ||
+            !isChainSupported ||
+            !extrinsic ||
+            (!signetVault && !selectedAccount)
+          }
+          onClick={handleTransfer}
+        >
+          {isChainSupported
+            ? loading
+              ? "Transferring..."
+              : "Transfer Token"
+            : "Chain not supported!"}
+        </Button>
+        {res?.error !== undefined && <p className="text-red-500 mt-2">{res.error}</p>}
+        {res?.receipt !== undefined && (
+          <p className="text-green-500 mt-2">
+            Tx submitted at {res.receipt.blockNumber}-{res.receipt.txIndex}
+          </p>
+        )}
+      </form>
+    </div>
   )
 }
